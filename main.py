@@ -101,12 +101,17 @@ async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # 🚀 Run Bot
 # ==============================
 if __name__ == "__main__":
-    application = ApplicationBuilder().token(BOT_TOKEN).build()
+    import asyncio
 
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CallbackQueryHandler(mine, pattern="mine"))
-    application.add_handler(CallbackQueryHandler(tasks, pattern="tasks"))
-    application.add_handler(CallbackQueryHandler(about, pattern="about"))
+    async def main():
+        application = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    print("🤖 Chill Miner is live...")
-    application.run_polling()
+        application.add_handler(CommandHandler("start", start))
+        application.add_handler(CallbackQueryHandler(mine, pattern="mine"))
+        application.add_handler(CallbackQueryHandler(tasks, pattern="tasks"))
+        application.add_handler(CallbackQueryHandler(about, pattern="about"))
+
+        print("🤖 Chill Miner is live...")
+        await application.run_polling()
+
+    asyncio.run(main())
