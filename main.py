@@ -4,6 +4,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import firebase_admin
 from firebase_admin import credentials, firestore
 import os, threading, time
+import imghdr
 
 # Initialize Flask
 app = Flask(__name__)
