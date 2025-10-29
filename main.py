@@ -6,6 +6,9 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 import firebase_admin
 from firebase_admin import credentials, firestore
 
+# Telegram Bot Token (from Render environment variable)
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
 # Flask keep-alive server
 app = Flask(__name__)
 
@@ -22,9 +25,6 @@ Thread(target=run).start()
 cred = credentials.Certificate("serviceAccountKey.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
-
-# Telegram Bot Token (from Render environment variable)
-BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 # Start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
