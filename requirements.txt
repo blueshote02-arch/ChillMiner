@@ -1,4 +1,5 @@
-python-telegram-bot==20.3
+python-telegram-bot==13.7
 firebase-admin
-Flask
-gunicorn
+requests
+img2pdf
+Pillow
