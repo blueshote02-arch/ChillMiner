@@ -1,32 +1,40 @@
 import os
 from flask import Flask
 from threading import Thread
-from telegram import Updater, InlineKeyboardButton, InlineKeyboardMarkup, MessageHandler, Filters
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# Telegram Bot Token (from Render environment variable)
+# ==============================
+# 🔐 Telegram Bot Token
+# ==============================
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# Flask keep-alive server
+# ==============================
+# 🌐 Flask keep-alive server
+# ==============================
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "💎 Chill Miner Bot is Running"
+    return "💎 Chill Miner Bot is Running Smoothly on Render!"
 
 def run():
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
 
 Thread(target=run).start()
 
-# Firebase setup (use your service account here)
+# ==============================
+# 🔥 Firebase setup
+# ==============================
 cred = credentials.Certificate("serviceAccountKey.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
-# Start command
+# ==============================
+# ⚙️ Handlers
+# ==============================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_ref = db.collection("users").document(str(user.id))
@@ -42,12 +50,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        "💎 Welcome to *Chill Miner!*\nStart mining and completing tasks to earn coins 🔥",
+        "💎 *Welcome to Chill Miner!*\n\nStart mining and completing tasks to earn coins 🔥",
         parse_mode="Markdown",
         reply_markup=reply_markup
     )
 
-# Mine button
 async def mine(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -57,12 +64,15 @@ async def mine(update: Update, context: ContextTypes.DEFAULT_TYPE):
     coins = user_data.to_dict().get("coins", 0) + 5
     user_ref.update({"coins": coins})
 
-    await query.edit_message_text(f"⛏️ You mined 5 coins!\n💰 Total Balance: *{coins} coins*", parse_mode="Markdown")
+    await query.edit_message_text(
+        f"⛏️ You mined 5 coins!\n💰 Total Balance: *{coins} coins*",
+        parse_mode="Markdown"
+    )
 
-# Tasks section
 async def tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+
     keyboard = [
         [InlineKeyboardButton("📸 Instagram", url="https://www.instagram.com/chillb0oi?igsh=MWllcTNrdDJpdXlxcw==")],
         [InlineKeyboardButton("📘 Facebook", url="https://www.facebook.com/share/1DQzvSudFP/")],
@@ -74,7 +84,6 @@ async def tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=reply_markup
     )
 
-# About page
 async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -83,16 +92,21 @@ async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Chill Miner is a fun Telegram bot where you can mine coins, complete social tasks, "
         "and grow your balance easily!\n\n"
         "🔹 No investment required\n"
-        "🔹 Earn coins by mining & tasks\n"
-        "🔹 More features coming soon ⚡"
+        "🔹 Earn coins by mining & completing tasks\n"
+        "🔹 More exciting updates coming soon ⚡"
     )
     await query.edit_message_text(about_text, parse_mode="Markdown")
 
-# Run bot
+# ==============================
+# 🚀 Run Bot
+# ==============================
 if __name__ == "__main__":
-    app_builder = ApplicationBuilder().token(BOT_TOKEN).build()
-    app_builder.add_handler(CommandHandler("start", start))
-    app_builder.add_handler(CallbackQueryHandler(mine, pattern="mine"))
-    app_builder.add_handler(CallbackQueryHandler(tasks, pattern="tasks"))
-    app_builder.add_handler(CallbackQueryHandler(about, pattern="about"))
-    app_builder.run_polling()
+    application = ApplicationBuilder().token(BOT_TOKEN).build()
+
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(mine, pattern="mine"))
+    application.add_handler(CallbackQueryHandler(tasks, pattern="tasks"))
+    application.add_handler(CallbackQueryHandler(about, pattern="about"))
+
+    print("🤖 Chill Miner is live...")
+    application.run_polling()
