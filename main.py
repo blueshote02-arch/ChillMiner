@@ -1,7 +1,7 @@
 import os
 from flask import Flask
 from threading import Thread
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Updater, InlineKeyboardButton, InlineKeyboardMarkup, MessageHandler, Filters
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 import firebase_admin
 from firebase_admin import credentials, firestore
