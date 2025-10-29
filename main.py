@@ -95,24 +95,30 @@ async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Run bot
 if __name__ == "__main__":
+    from telegram.ext import ApplicationBuilder
+
+    app_url = os.getenv("RENDER_EXTERNAL_URL")  # Render auto sets this
+    webhook_url = f"{app_url}/webhook/{BOT_TOKEN}"
+
+    application = ApplicationBuilder().token(BOT_TOKEN).build()
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(mine, pattern="mine"))
+    application.add_handler(CallbackQueryHandler(tasks, pattern="tasks"))
+    application.add_handler(CallbackQueryHandler(about, pattern="about"))
+
+    # Set webhook
+    async def set_webhook():
+        await application.bot.set_webhook(url=webhook_url)
+
     import asyncio
-    import threading
+    asyncio.run(set_webhook())
 
-    async def run_bot():
-        application = ApplicationBuilder().token(BOT_TOKEN).build()
-        application.add_handler(CommandHandler("start", start))
-        application.add_handler(CallbackQueryHandler(mine, pattern="mine"))
-        application.add_handler(CallbackQueryHandler(tasks, pattern="tasks"))
-        application.add_handler(CallbackQueryHandler(about, pattern="about"))
-        print("🤖 Chill Miner is live and polling...")
-        await application.run_polling()
+    # Flask route for webhook updates
+    @app.post(f"/webhook/{BOT_TOKEN}")
+    def telegram_webhook():
+        update = telegram.Update.de_json(request.get_json(force=True), application.bot)
+        application.update_queue.put_nowait(update)
+        return "ok", 200
 
-    def run_asyncio_loop():
-        asyncio.run(run_bot())
-
-    # Run the Telegram bot in a separate thread
-    bot_thread = threading.Thread(target=run_asyncio_loop)
-    bot_thread.start()
-
-    # Run the Flask server
+    print("✅ Webhook set successfully:", webhook_url)
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
