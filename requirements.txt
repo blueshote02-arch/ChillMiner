@@ -3,3 +3,4 @@ firebase-admin
 flask
 telegram
 sift-stack-py
+imghdr-py
