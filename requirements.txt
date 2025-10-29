@@ -1,7 +1,4 @@
+Flask
 python-telegram-bot==20.3
 firebase-admin
-requests
-img2pdf
-Pillow
 gunicorn
-flask
