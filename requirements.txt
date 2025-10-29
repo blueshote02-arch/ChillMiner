@@ -3,3 +3,5 @@ firebase-admin
 requests
 img2pdf
 Pillow
+gunicorn
+flask
