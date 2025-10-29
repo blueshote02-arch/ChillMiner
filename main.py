@@ -1,74 +1,98 @@
-from flask import Flask, send_from_directory
-from telegram.ext import Updater, CommandHandler
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+import os
+from flask import Flask
+from threading import Thread
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 import firebase_admin
 from firebase_admin import credentials, firestore
-import os, threading, time
-import imghdr
 
-# Initialize Flask
+# Flask keep-alive server
 app = Flask(__name__)
 
-# Firebase setup
+@app.route('/')
+def home():
+    return "💎 Chill Miner Bot is Running"
+
+def run():
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+
+Thread(target=run).start()
+
+# Firebase setup (use your service account here)
 cred = credentials.Certificate("serviceAccountKey.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
-# Telegram bot setup
+# Telegram Bot Token (from Render environment variable)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-updater = Updater(BOT_TOKEN, use_context=True)
-dp = updater.dispatcher
 
-# Telegram Commands
-def start(update, context):
+# Start command
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    user_id = str(user.id)
+    user_ref = db.collection("users").document(str(user.id))
+    user_data = user_ref.get()
 
-    user_ref = db.collection("users").document(user_id)
-    if not user_ref.get().exists:
-        user_ref.set({"coins": 0, "insta_done": False, "fb_done": False, "x_done": False})
+    if not user_data.exists:
+        user_ref.set({"coins": 0, "username": user.username or "Unknown"})
 
     keyboard = [
-        [InlineKeyboardButton("🚀 Open Chill Miner", url="https://your-app-name.onrender.com")]
+        [InlineKeyboardButton("🪙 Mine Coins", callback_data="mine")],
+        [InlineKeyboardButton("🎯 Tasks (Earn More)", callback_data="tasks")],
+        [InlineKeyboardButton("ℹ️ About", callback_data="about")]
     ]
-    update.message.reply_text(
-        "👋 Welcome to *Chill Miner!*\n\nTap below to open the mining dashboard ⬇️",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="Markdown"
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(
+        "💎 Welcome to *Chill Miner!*\nStart mining and completing tasks to earn coins 🔥",
+        parse_mode="Markdown",
+        reply_markup=reply_markup
     )
 
-def balance(update, context):
-    user_id = str(update.effective_user.id)
-    user_ref = db.collection("users").document(user_id).get()
-    if user_ref.exists:
-        coins = user_ref.to_dict().get("coins", 0)
-        update.message.reply_text(f"💎 You have {coins} Chill Coins.")
-    else:
-        update.message.reply_text("Start first with /start")
+# Mine button
+async def mine(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
 
-dp.add_handler(CommandHandler("start", start))
-dp.add_handler(CommandHandler("balance", balance))
+    user_ref = db.collection("users").document(str(query.from_user.id))
+    user_data = user_ref.get()
+    coins = user_data.to_dict().get("coins", 0) + 5
+    user_ref.update({"coins": coins})
 
-# Flask Routes for Web App
-@app.route('/')
-def home():
-    return send_from_directory('web', 'index.html')
+    await query.edit_message_text(f"⛏️ You mined 5 coins!\n💰 Total Balance: *{coins} coins*", parse_mode="Markdown")
 
-@app.route('/about')
-def about():
-    return send_from_directory('web', 'about.html')
+# Tasks section
+async def tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    keyboard = [
+        [InlineKeyboardButton("📸 Instagram", url="https://www.instagram.com/chillb0oi?igsh=MWllcTNrdDJpdXlxcw==")],
+        [InlineKeyboardButton("📘 Facebook", url="https://www.facebook.com/share/1DQzvSudFP/")],
+        [InlineKeyboardButton("𝕏 Twitter", url="https://x.com/CHILLB00i?t=TPYjr3Es2NF37nDG2hWU0g&s=09")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(
+        "🔥 Complete these tasks and earn bonus coins by following us on all platforms 👇",
+        reply_markup=reply_markup
+    )
 
-@app.route('/<path:path>')
-def static_files(path):
-    return send_from_directory('web', path)
+# About page
+async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    about_text = (
+        "💎 *About Chill Miner*\n\n"
+        "Chill Miner is a fun Telegram bot where you can mine coins, complete social tasks, "
+        "and grow your balance easily!\n\n"
+        "🔹 No investment required\n"
+        "🔹 Earn coins by mining & tasks\n"
+        "🔹 More features coming soon ⚡"
+    )
+    await query.edit_message_text(about_text, parse_mode="Markdown")
 
-def run_flask():
-    app.run(host="0.0.0.0", port=8080)
-
-def run_telegram():
-    updater.start_polling()
-    updater.idle()
-
-if __name__ == '__main__':
-    threading.Thread(target=run_flask).start()
-    threading.Thread(target=run_telegram).start()
+# Run bot
+if __name__ == "__main__":
+    app_builder = ApplicationBuilder().token(BOT_TOKEN).build()
+    app_builder.add_handler(CommandHandler("start", start))
+    app_builder.add_handler(CallbackQueryHandler(mine, pattern="mine"))
+    app_builder.add_handler(CallbackQueryHandler(tasks, pattern="tasks"))
+    app_builder.add_handler(CallbackQueryHandler(about, pattern="about"))
+    app_builder.run_polling()
